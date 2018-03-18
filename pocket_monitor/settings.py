@@ -25,6 +25,75 @@ SECRET_KEY = 'a@m_u@22l@r0m)pgkm(unp2dll-14ms&aw%e-svhrdf$g657us'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse',
+        }       
+    },
+    'formatters': {
+        'standard': {
+            'format': '[%(levelname)s %(asctime)s] %(pathname)s %(module)s %(funcName)s %(lineno)d: %(message)s'
+        },
+        'simple': {
+            'format': '[%(levelname)s %(asctime)s] %(message)s'
+        },
+    },
+    'handlers': {
+        'null': {
+            'class': 'logging.NullHandler',
+        },
+        'mail_admins': {
+            'level': 'ERROR',
+            'class': 'django.utils.log.AdminEmailHandler',
+            'include_html': True,
+            'formatter': 'standard'
+        },
+        'file_handler': {
+             'level': 'DEBUG',
+             'class': 'logging.handlers.TimedRotatingFileHandler',
+             'filename': os.path.join(BASE_DIR, "server.log"),
+             'when': 'D',
+             'interval': 7,
+             'backupCount': 2,
+             'formatter': 'standard'
+        },        
+        'console': {
+            'level': 'DEBUG',
+            'filters': ['require_debug_true'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'standard'
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file_handler', 'console'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'ERROR'),
+            'propagate': True,
+        },
+        'django.request': {
+            'handlers': ['mail_admins'],
+            'level': os.getenv('DJANGO_REQUEST_LOG_LEVEL', 'ERROR'),
+            'filters': ['require_debug_false'],
+            'propagate': False,
+        },
+        'django.security.DisallowedHost': {
+            'handlers': ['null'],
+            'propagate': False,
+        },        
+        'ccm': {
+            'handlers': ['file_handler', 'console'],
+            'level': os.getenv('CCM_LOG_LEVEL', 'DEBUG'),
+            'propagate': True
+        },       
+    }
+}
+
 ALLOWED_HOSTS = []
 
 
@@ -125,13 +194,49 @@ STATIC_URL = '/static/'
 REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` permissions,
     # or allow read-only access for unauthenticated users.
-    # 'DEFAULT_PERMISSION_CLASSES': [
+    # 'DEFAULT_PERMISSION_CLASSES': (
     #     'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
-    # ],
+    # ),
+    # 'DEFAULT_AUTHENTICATION_CLASSES': (
+    #     'rest_framework.authentication.SessionAuthentication',
+    #     'rest_framework.authentication.BasicAuthentication'
+    # ), 
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
 
+        #  Disable BrowsableAPI
+        # 'rest_framework.renderers.BrowsableAPIRenderer',
+    ),
+    'DEFAULT_PARSER_CLASSES': (
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.FormParser',
+        'rest_framework.parsers.MultiPartParser'
+    ),
     'DEFAULT_FILTER_BACKENDS': (
-        'django_filters.rest_framework.DjangoFilterBackend',
+        'django_filters.rest_framework.DjangoFilterBackend', 'rest_framework.filters.OrderingFilter'
     ),
     'DEFAULT_PAGINATION_CLASS': 'pocket_monitor.db.pagination.CustomizedPageNumberPagination',
     'PAGE_SIZE': 10
 }
+
+# admin email settings
+EMAIL_HOST = 'smtp.sina.com.cn'
+EMAIL_PORT = 25
+EMAIL_HOST_USER = 'sender@example.com'
+EMAIL_HOST_PASSWORD = 'xxxxx'
+EMAIL_SUBJECT_PREFIX = ''
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = False
+EMAIL_TIMEOUT = 60
+EMAIL_SSL_KEYFILE = None
+EMAIL_SSL_CERTFILE = None
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+DEFAULT_CHARSET = 'UTF-8'
+EMAIL_USE_LOCALTIME = ''
+# display sender
+SERVER_EMAIL = 'Server <sender@example.com>'
+
+# receiver
+ADMINS = (
+         ('Admin', 'admin@example.com'),
+         )
