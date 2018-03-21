@@ -130,7 +130,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'django_filters',
-    'pocket_monitor.db.apps.DbConfig',
+    'pocket_monitor.db',
 ]
 
 MIDDLEWARE = [
