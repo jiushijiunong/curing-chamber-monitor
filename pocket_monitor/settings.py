@@ -15,7 +15,6 @@ import os
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
@@ -34,14 +33,14 @@ LOGGING = {
         },
         'require_debug_false': {
             '()': 'django.utils.log.RequireDebugFalse',
-        }       
+        }
     },
     'formatters': {
         'standard': {
-            'format': '[%(levelname)s %(asctime)s] %(pathname)s %(module)s %(funcName)s %(lineno)d: %(message)s'
+            'format': '%(asctime)s %(levelname)s [%(threadName)s] [%(name)s] %(pathname)s %(funcName)s %(lineno)d: %(message)s'
         },
         'simple': {
-            'format': '[%(levelname)s %(asctime)s] %(message)s'
+            'format': '%(asctime)s %(levelname)s [%(threadName)s] [%(name)s] %(message)s'
         },
     },
     'handlers': {
@@ -54,15 +53,34 @@ LOGGING = {
             'include_html': True,
             'formatter': 'standard'
         },
-        'file_handler': {
-             'level': 'DEBUG',
-             'class': 'logging.handlers.TimedRotatingFileHandler',
-             'filename': os.path.join(BASE_DIR, "server.log"),
-             'when': 'D',
-             'interval': 7,
-             'backupCount': 2,
-             'formatter': 'standard'
-        },        
+        # 'file_handler': {
+        #      'level': 'DEBUG',
+        #      'class': 'logging.handlers.TimedRotatingFileHandler',
+        #      'filename': os.path.join(BASE_DIR, "server.log"),
+        #      'when': 'D',
+        #      'interval': 7,
+        #      'backupCount': 2,
+        #      'encoding': 'UTF-8',
+        #      'formatter': 'standard'
+        # },
+        'server_log': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, "server.log"),
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
+            'encoding': 'UTF-8',
+            'formatter': 'standard'
+        },
+        'mo_log': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, "mo.log"),
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
+            'encoding': 'UTF-8',
+            'formatter': 'standard'
+        },
         'console': {
             'level': 'DEBUG',
             'filters': ['require_debug_true'],
@@ -72,7 +90,7 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['file_handler', 'console'],
+            'handlers': ['server_log', 'console'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'ERROR'),
             'propagate': True,
         },
@@ -85,17 +103,21 @@ LOGGING = {
         'django.security.DisallowedHost': {
             'handlers': ['null'],
             'propagate': False,
-        },        
+        },
         'ccm': {
-            'handlers': ['file_handler', 'console'],
+            'handlers': ['server_log', 'console'],
             'level': os.getenv('CCM_LOG_LEVEL', 'DEBUG'),
             'propagate': True
-        },       
+        },
+        'mo': {
+            'handlers': ['mo_log', 'console'],
+            'level': os.getenv('CCM_LOG_LEVEL', 'DEBUG'),
+            'propagate': True
+        },
     }
 }
 
 ALLOWED_HOSTS = []
-
 
 # Application definition
 
@@ -108,7 +130,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'django_filters',
-    'pocket_monitor.db',
+    'pocket_monitor.db.apps.DbConfig',
 ]
 
 MIDDLEWARE = [
@@ -141,7 +163,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'pocket_monitor.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
@@ -151,7 +172,6 @@ DATABASES = {
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/1.11/ref/settings/#auth-password-validators
@@ -171,7 +191,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/1.11/topics/i18n/
 
@@ -184,7 +203,6 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
@@ -238,5 +256,5 @@ SERVER_EMAIL = 'Server <sender@example.com>'
 
 # receiver
 ADMINS = (
-         ('Admin', 'admin@example.com'),
-         )
+    ('Admin', 'admin@example.com'),
+)

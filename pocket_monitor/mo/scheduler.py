@@ -38,6 +38,13 @@ class Scheduler(threading.Thread):
         self.__running = True
         super(Scheduler, self).start()
 
+    def wait_complete(self):
+        """
+        will block the caller's thread to wait the scheduler finish
+        :return:
+        """
+        self.join()
+
     def close(self):
         self.__running = False
 
