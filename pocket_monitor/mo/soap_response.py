@@ -24,17 +24,22 @@ class SoapResponse(object):
         ls_ret = []
         if self._has_child(entity_root):
             for child in entity_root:
-                ret = self._get_entity(child)
-                if ret:
-                    ls_ret.append(ret)
-        else:
+                if self._has_child(child):
+                    ret = self._get_entity(child)
+                    if ret:
+                        ls_ret.append(ret)
+                else:
+                    ret = self._get_entity(entity_root)
+                    if ret:
+                        ls_ret.append(ret)
+                    break
+        elif entity_root.text is not None:
             ls_ret.append(entity_root.text)
         return ls_ret
 
     def _has_child(self, node):
         for child in node:
-            if child:
-                return True
+            return True
         return False
 
     def _get_entity(self, node):
@@ -49,7 +54,7 @@ class SoapResponse(object):
 
     def _get_node_tag_name(self, node):
         arr = node.tag.split("}")
-        return arr[-1]
+        return arr[-1].split(":")[-1]
 
     def _match_child_node(self, node, child_node_name):
         for child in node:
