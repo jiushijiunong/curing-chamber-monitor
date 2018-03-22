@@ -8,20 +8,19 @@ except ImportError:
 
 class SoapResponse(object):
     def __init__(self, rep_code=None, rep_content=None):
-
         self.rep_code = rep_code
         self.rep_content = rep_content
 
-    def get_response_entities(self, entity_root_name):
+    def get_response_entities(self, entity_root_name, page_count_pro_name=None, record_count_pro_name=None):
         root = ele_tree.fromstring(self.rep_content)
 
         # find entity root
-        entity_root = self._match_child_node(root, entity_root_name)
-
+        parent, entity_root = self._match_child_node(root, entity_root_name, True)
         if entity_root is None:
             return
 
         ls_ret = []
+        page_info = {}
         if self._has_child(entity_root):
             for child in entity_root:
                 if self._has_child(child):
@@ -33,9 +32,21 @@ class SoapResponse(object):
                     if ret:
                         ls_ret.append(ret)
                     break
+            if page_count_pro_name is not None:
+                parent, page_count = self._match_child_node(parent, page_count_pro_name)
+                if page_count.text:
+                    page_info["page_count"] = int(page_count.text)
+            if record_count_pro_name is not None:
+                parent, record_count = self._match_child_node(parent, record_count_pro_name)
+                if record_count.text:
+                    page_info["record_count"] = int(record_count.text)
         elif entity_root.text is not None:
             ls_ret.append(entity_root.text)
-        return ls_ret
+
+        ret = {"content": ls_ret}
+        if page_info:
+            ret["page_info"] = page_info
+        return ret
 
     def _has_child(self, node):
         for child in node:
@@ -56,9 +67,10 @@ class SoapResponse(object):
         arr = node.tag.split("}")
         return arr[-1].split(":")[-1]
 
-    def _match_child_node(self, node, child_node_name):
+    def _match_child_node(self, node, child_node_name, recursive=False):
         for child in node:
             if self._get_node_tag_name(child) == child_node_name:
-                return child
+                return node, child
             else:
-                return self._match_child_node(child, child_node_name)
+                if recursive:
+                    return self._match_child_node(child, child_node_name, recursive)

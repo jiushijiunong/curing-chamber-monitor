@@ -111,7 +111,7 @@ LOGGING = {
         },
         'mo': {
             'handlers': ['mo_log', 'console'],
-            'level': os.getenv('CCM_LOG_LEVEL', 'DEBUG'),
+            'level': os.getenv('MO_LOG_LEVEL', 'DEBUG'),
             'propagate': True
         },
     }
@@ -202,7 +202,8 @@ USE_I18N = True
 
 USE_L10N = True
 
-USE_TZ = True
+# To avoid RuntimeWarning: DateTimeField xxx received a naive datetime (2014-01-06 10:15:40.740000) while time zone support is active
+USE_TZ = False
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/

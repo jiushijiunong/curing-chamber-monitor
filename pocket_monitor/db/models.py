@@ -7,10 +7,17 @@ from django.db import models
 
 
 class Project(models.Model):
-    name = models.CharField(max_length=20)
-    created = models.DateTimeField(auto_now_add=True)
-    title = models.CharField(max_length=100, blank=True, default='')
-    code = models.TextField()
+    instance_id = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
+    nature = models.CharField(max_length=20)
+    num = models.CharField(max_length=100)
+    region = models.CharField(max_length=100)
+    address = models.CharField(max_length=256)
+    build_report_num = models.CharField(max_length=100)
+    status = models.IntegerField()
+    create_time = models.DateTimeField()
+    last_edit_time = models.DateTimeField()
+    log_created_time = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ('-created', 'code')
+        ordering = ('-last_edit_time', 'create_time')

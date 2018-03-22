@@ -42,11 +42,11 @@ class ItemRetriever(BaseRetriever):
 
     def retrieve(self):
         rep = super(ItemRetriever, self).retrieve()
-        return rep.rep_code, rep.get_response_entities("GetItemSeriesResult")
+        return {"code": rep.rep_code, "result": rep.get_response_entities("GetItemSeriesResult")}
 
 
 # http://www.scetia.com/Scetia.SampleManage.WCF/Project.svc
-# ﻿SOAPAction: http://tempuri.org/IProject/GetProjectsForBuildUnit
+# SOAPAction: http://tempuri.org/IProject/GetProjectsForBuildUnit
 # Request: <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><GetProjectsForBuildUnit xmlns="http://tempuri.org/"><buildUnitId>394eb96f-e57b-4b0a-bb29-0f1fbddfaeb6</buildUnitId><pageSize>20</pageSize><pageNum>1</pageNum><buildUnitUserId>0752221a-fa3e-4211-a3b9-e1c8886edd76</buildUnitUserId><queryStr xsi:nil="true" /><notFinishedOnly>true</notFinishedOnly></GetProjectsForBuildUnit></s:Body></s:Envelope>
 class ProjectRetriever(BaseRetriever):
     def __init__(self):
@@ -55,7 +55,7 @@ class ProjectRetriever(BaseRetriever):
                                                method="GetProjectsForBuildUnit")
 
     def retrieve(self, build_unit_id=None, build_unit_user_id=None,
-                 not_finished_only=True, query_str='', page_num=1, page_size=20):
+                 not_finished_only=None, query_str='', page_num=1, page_size=20):
         rep = super(ProjectRetriever, self).retrieve(buildUnitId=build_unit_id,
                                                      queryStr=query_str,
                                                      buildUnitUserId=build_unit_user_id,
@@ -64,7 +64,7 @@ class ProjectRetriever(BaseRetriever):
                                                      pageSize=page_size,
                                                      __order_list=["buildUnitId", "pageSize", "pageNum",
                                                                    "buildUnitUserId", "queryStr", "notFinishedOnly"])
-        return rep.rep_code, rep.get_response_entities("GetProjectsForBuildUnitResult")
+        return {"code": rep.rep_code, "result": rep.get_response_entities("GetProjectsForBuildUnitResult", "pageCount")}
 
 
 # http://www.scetia.com/Scetia.SampleManage.WCF/Contract.svc
@@ -78,7 +78,7 @@ class ContractRetriever(BaseRetriever):
 
     def retrieve(self, project_id=None):
         rep = super(ContractRetriever, self).retrieve(projectId=project_id)
-        return rep.rep_code, rep.get_response_entities("GetContractResult")
+        return {"code": rep.rep_code, "result": rep.get_response_entities("GetContractResult")}
 
 
 # http://www.scetia.com/Scetia.SampleManage.WCF/Sample.svc
@@ -98,7 +98,7 @@ class SampleRetriever(BaseRetriever):
                                                     pageSize=page_size,
                                                     __order_list=["projectId", "contractSignNumber", "queryStr",
                                                                   "pageSize", "pageNum"])
-        return rep.rep_code, rep.get_response_entities("GetSamplesForAccountByPagerResult")
+        return {"code": rep.rep_code, "result": rep.get_response_entities("GetSamplesForAccountByPagerResult", "pageCount", "recordCount")}
 
 
 # http://www.scetia.com/Scetia.OnlineExplorer/Authentication.svc
@@ -114,36 +114,4 @@ class AuthenticationRetriever(BaseRetriever):
 
     def retrieve(self):
         rep = super(AuthenticationRetriever, self).retrieve()
-        return rep.rep_code, rep.get_response_entities("GetLoginInfoResult")
-
-
-if __name__ == "__main__":
-    project_id = "fbdc1ed6-9d0f-4dbe-b7b2-6421edc61bcc"
-    build_unit_id = "394eb96f-e57b-4b0a-bb29-0f1fbddfaeb6"
-
-    contract_sign_number = "2016004481"
-    query_str = ""
-    page_size = 20
-    page_num = 1
-    build_unit_user_id = "0752221a-fa3e-4211-a3b9-e1c8886edd76"
-    not_finished_only = True
-
-    # retriever = ProjectRetriever()
-    # rep = retriever.retrieve(build_unit_id=build_unit_id, page_size=page_size, page_num=page_num, build_unit_user_id=build_unit_user_id, not_finished_only=not_finished_only, query_str=query_str)
-    #
-    # print(rep)
-
-    # retriever = ItemRetriever()
-    # rep = retriever.retrieve()
-    #
-    # print(rep)
-
-    # retriever = ContractRetriever()
-    # rep = retriever.retrieve(project_id=project_id)
-    #
-    # print(rep)
-    #
-    retriever = SampleRetriever()
-    rep = retriever.retrieve(project_id=project_id, contract_sign_number=contract_sign_number, query_str=query_str, page_num=page_num, page_size=page_size)
-    for a in rep[1]:
-        print(a["_SampleName"])
+        return {"code": rep.rep_code, "result": rep.get_response_entities("GetLoginInfoResult")}
