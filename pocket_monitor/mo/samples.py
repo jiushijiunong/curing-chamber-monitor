@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import traceback
+from datetime import time
 
 from soap_request import SoapRequest
 from soap_response import SoapResponse
@@ -143,9 +144,12 @@ class Sync(object):
         self.sample_retriever = SampleRetriever()
 
     def sync(self):
+        start_time = time.time()
+        logger.info("Sync %s started." % start_time)
         user_id = "0752221a-fa3e-4211-a3b9-e1c8886edd76"
         build_unit_id = "394eb96f-e57b-4b0a-bb29-0f1fbddfaeb6"
         self._projects_sync(user_id, build_unit_id)
+        logger.info("Sync %s ended." % start_time)
 
     def _projects_sync(self, user_instance_id, build_unit_id):
         try:
