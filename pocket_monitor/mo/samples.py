@@ -150,7 +150,7 @@ class Sync(object):
 
     def sync(self):
         start_time = time.time()
-        logger.info("Sync %Ls started." % start_time)
+        logger.info("Sync %Ld started." % start_time)
         user_id = "0752221a-fa3e-4211-a3b9-e1c8886edd76"
         build_unit_id = "394eb96f-e57b-4b0a-bb29-0f1fbddfaeb6"
         self._projects_sync(user_id, build_unit_id)

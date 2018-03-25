@@ -27,7 +27,7 @@ def retry(exception_to_check, tries=3, logger=None, delay=0.5, backoff=2):
                 try:
                     return f(*args, **kwargs)
                 except exception_to_check as e:
-                    msg = "%s %s, Retrying in %.1f seconds..." % (type(e), str(e), mdelay)
+                    msg = "%s %s,\n Retrying in %.1f seconds..." % (type(e), str(e), mdelay)
                     if logger:
                         logger.warning(msg)
                     else:
