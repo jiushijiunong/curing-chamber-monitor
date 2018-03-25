@@ -186,11 +186,10 @@ class Sync(object):
                 project = models.Project.objects.get(instance_id=project_item["_Id"])
                 pre_project_status = project.status
                 if project.status != int(project_item["_ProjectStatus"]):
-                    origin_status = project.status
                     project.status = int(project_item["_ProjectStatus"])
                     project.save()
                     logger.info("Update project %s set status from %d to %d."
-                                % (project_item["_Id"], origin_status, project.status))
+                                % (project_item["_Id"], pre_project_status, project.status))
             except models.Project.DoesNotExist:
                 project = models.Project.objects.create(instance_id=project_item["_Id"],
                                                         name=project_item["_ProjectName"],
@@ -274,6 +273,13 @@ class Sync(object):
         for sample_item in raw_data:
             try:
                 sample = models.Sample.objects.get(instance_id=sample_item["_Id"])
+                pre_project_status = sample.status
+                if sample.status != int(sample_item["_Sample_Status"]):
+                    sample.status = int(sample_item["_Sample_Status"])
+                    sample.status_str = sample_item["_SampleStatusStr"]
+                    sample.save()
+                    logger.info("Update sample %s set status from %d to %d."
+                                % (sample_item["_Id"], pre_project_status, sample.status))
             except models.Sample.DoesNotExist:
                 sample = models.Sample.objects.create(instance_id=sample_item["_Id"],
                                                       name=sample_item["_SampleName"],
