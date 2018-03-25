@@ -12,6 +12,8 @@ class SoapResponse(object):
         self.rep_content = rep_content
 
     def get_response_entities(self, entity_root_name, page_count_pro_name=None, record_count_pro_name=None):
+        if not self.rep_content:
+            return {"content": []}
         root = ele_tree.fromstring(self.rep_content)
 
         # find entity root
