@@ -2,8 +2,12 @@
 from __future__ import unicode_literals
 
 import traceback
-from datetime import time
+import time
+from _elementtree import ParseError
+from _socket import timeout
+from httplib import HTTPException
 
+from pocket_monitor import utils
 from soap_request import SoapRequest
 from soap_response import SoapResponse
 import pocket_monitor.http as http
@@ -29,6 +33,7 @@ class BaseRetriever(object):
         if cookie is not None:
             self.headers['Cookie'] = cookie
 
+    @utils.retry((HTTPException, timeout, IOError, ParseError), tries=3, logger=logger)
     def retrieve(self, **kwargs):
         soap_xml = self.req.parse(**kwargs)
         headers = self.headers.copy()
@@ -145,23 +150,24 @@ class Sync(object):
 
     def sync(self):
         start_time = time.time()
-        logger.info("Sync %s started." % start_time)
+        logger.info("Sync %Ls started." % start_time)
         user_id = "0752221a-fa3e-4211-a3b9-e1c8886edd76"
         build_unit_id = "394eb96f-e57b-4b0a-bb29-0f1fbddfaeb6"
         self._projects_sync(user_id, build_unit_id)
-        logger.info("Sync %s ended." % start_time)
+        logger.info("Sync %Ld ended, cost %Ld\n\n" % (start_time, time.time() - start_time))
 
     def _projects_sync(self, user_instance_id, build_unit_id):
+        current_page = 1
         try:
             rep = self.project_retriever.retrieve(build_unit_id=build_unit_id,
-                                                  page_num=1,
+                                                  page_num=current_page,
                                                   build_unit_user_id=user_instance_id)
             self._do_projects_sync(rep["result"]["content"], user_instance_id, build_unit_id)
             if "page_info" in rep["result"] and "page_count" in rep["result"]["page_info"]:
                 page_count = rep["result"]["page_info"]["page_count"]
                 left_pages = page_count - 1
-                current_page = 1
                 while left_pages > 1:
+                    current_page += 1
                     rep = self.project_retriever.retrieve(build_unit_id=build_unit_id,
                                                           page_num=current_page,
                                                           build_unit_user_id=user_instance_id)
@@ -170,7 +176,8 @@ class Sync(object):
                     current_page += 1
         except Exception as e:
             exstr = traceback.format_exc()
-            logger.error('Sync projects error for user %s: %s' % (user_instance_id, exstr))
+            logger.error('Sync page %d of projects error for user %s: %s %s' % (current_page, user_instance_id,
+                                                                                type(e), exstr))
 
     def _do_projects_sync(self, raw_data, user_instance_id, build_unit_id):
         pre_project_status = 0
@@ -209,7 +216,7 @@ class Sync(object):
             self._do_contracts_sync(project, rep["result"]["content"])
         except Exception as e:
             exstr = traceback.format_exc()
-            logger.error('Sync contracts error for project %s: %s' % (project.instance_id, exstr))
+            logger.error('Sync contracts error for project %s: %s %s' % (project.instance_id, type(e), exstr))
 
     def _do_contracts_sync(self, project, raw_data):
         for contract_item in raw_data:
@@ -239,16 +246,17 @@ class Sync(object):
             self._samples_sync(project, contract)
 
     def _samples_sync(self, project, contract):
+        current_page = 1
         try:
             rep = self.sample_retriever.retrieve(project_id=project.instance_id,
                                                  contract_sign_number=contract.sign_number,
-                                                 page_num=1)
+                                                 page_num=current_page)
             self._do_samples_sync(contract, rep["result"]["content"])
             if "page_info" in rep["result"] and "page_count" in rep["result"]["page_info"]:
                 page_count = rep["result"]["page_info"]["page_count"]
                 left_pages = page_count - 1
-                current_page = 1
                 while left_pages > 1:
+                    current_page += 1
                     rep = self.sample_retriever.retrieve(project_id=project.instance_id,
                                                          contract_sign_number=contract.sign_number,
                                                          page_num=current_page)
@@ -257,8 +265,10 @@ class Sync(object):
                     current_page += 1
         except Exception as e:
             exstr = traceback.format_exc()
-            logger.error('Sync samples error for project %s contact %s: %s' % (project.instance_id,
-                                                                               contract.sign_number, exstr))
+            logger.error('Sync page %d of samples error for project %s contract %s: %s %s' % (current_page,
+                                                                                              project.instance_id,
+                                                                                              contract.sign_number,
+                                                                                              type(e), exstr))
 
     def _do_samples_sync(self, contract, raw_data):
         for sample_item in raw_data:

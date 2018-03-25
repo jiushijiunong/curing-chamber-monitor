@@ -4,7 +4,7 @@ except ImportError:
     from urllib import request as urllib2
 
 
-def post(url=None, body=None, headers={}, timeout=60):
+def post(url=None, body=None, headers={}, timeout=120):
     req = urllib2.Request(url, body, headers)
     try:
         rep = urllib2.urlopen(req, timeout=timeout)
