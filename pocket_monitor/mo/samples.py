@@ -67,7 +67,7 @@ class ProjectRetriever(BaseRetriever):
                                                method="GetProjectsForBuildUnit")
 
     def retrieve(self, build_unit_id=None, build_unit_user_id=None, not_finished_only=None, query_str='', page_num=1,
-                 page_size=600):
+                 page_size=20):
         rep = super(ProjectRetriever, self).retrieve(buildUnitId=build_unit_id,
                                                      queryStr=query_str,
                                                      buildUnitUserId=build_unit_user_id,
@@ -103,7 +103,7 @@ class SampleRetriever(BaseRetriever):
                                               method="GetSamplesForAccountByPager")
 
     def retrieve(self, project_id=None, contract_sign_number=None, query_str='', page_num=1,
-                 page_size=600):
+                 page_size=20):
         rep = super(SampleRetriever, self).retrieve(projectId=project_id,
                                                     contractSignNumber=contract_sign_number,
                                                     queryStr=query_str,
@@ -151,16 +151,36 @@ class Sync(object):
     def sync(self):
         start_time = time.time()
         logger.info("Sync %Ld started." % start_time)
-        user_id = "0752221a-fa3e-4211-a3b9-e1c8886edd76"
+        user_instance_id = "0752221a-fa3e-4211-a3b9-e1c8886edd76"
         build_unit_id = "394eb96f-e57b-4b0a-bb29-0f1fbddfaeb6"
-        self._projects_sync(user_id, build_unit_id)
+        self._projects_sync(user_instance_id, build_unit_id)
         logger.info("Sync %Ld ended, cost %Ld\n\n" % (start_time, time.time() - start_time))
+
+    def samples_count(self, user_instance_id, build_unit_id):
+        logger.info("Check samples count for build unit %s of user %s" % (build_unit_id, user_instance_id))
+        retrieved_samples_count = 0
+        samples_count = 0
+        projects = models.Project.objects.\
+            filter(user_instance_id=user_instance_id, build_unit_id=build_unit_id).values("id", "instance_id")
+        for project in projects:
+            contracts = models.Contract.objects.filter(project_id=project["id"]).values("id", "sign_number")
+            for contract in contracts:
+                rep = self.sample_retriever.retrieve(project_id=project["instance_id"],
+                                                     contract_sign_number=contract["sign_number"],
+                                                     page_num=1,
+                                                     page_size=20)
+                retrieved_samples_count += rep["result"]["page_info"]["record_count"]
+                samples_count += models.Sample.objects.filter(contract_id=contract["id"]).values("id").count()
+        logger.info("Retrieved samples count %d and %d in DB for build unit %s of user %s"
+                    % (retrieved_samples_count, samples_count, build_unit_id, user_instance_id))
 
     def _projects_sync(self, user_instance_id, build_unit_id):
         current_page = 1
+        logger.info("Sync for build unit %s of user %s" % (build_unit_id, user_instance_id))
         try:
             rep = self.project_retriever.retrieve(build_unit_id=build_unit_id,
                                                   page_num=current_page,
+                                                  page_size=600,
                                                   build_unit_user_id=user_instance_id)
             self._do_projects_sync(rep["result"]["content"], user_instance_id, build_unit_id)
             if "page_info" in rep["result"] and "page_count" in rep["result"]["page_info"]:
@@ -170,6 +190,7 @@ class Sync(object):
                     current_page += 1
                     rep = self.project_retriever.retrieve(build_unit_id=build_unit_id,
                                                           page_num=current_page,
+                                                          page_size=600,
                                                           build_unit_user_id=user_instance_id)
                     self._do_projects_sync(rep["result"]["content"], user_instance_id, build_unit_id)
                     left_pages -= 1
@@ -249,7 +270,8 @@ class Sync(object):
         try:
             rep = self.sample_retriever.retrieve(project_id=project.instance_id,
                                                  contract_sign_number=contract.sign_number,
-                                                 page_num=current_page)
+                                                 page_num=current_page,
+                                                 page_size=600)
             self._do_samples_sync(contract, rep["result"]["content"])
             if "page_info" in rep["result"] and "page_count" in rep["result"]["page_info"]:
                 page_count = rep["result"]["page_info"]["page_count"]
@@ -258,7 +280,8 @@ class Sync(object):
                     current_page += 1
                     rep = self.sample_retriever.retrieve(project_id=project.instance_id,
                                                          contract_sign_number=contract.sign_number,
-                                                         page_num=current_page)
+                                                         page_num=current_page,
+                                                         page_size=600)
                     self._do_samples_sync(contract, rep["result"]["content"])
                     left_pages -= 1
                     current_page += 1

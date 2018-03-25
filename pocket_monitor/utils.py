@@ -2,7 +2,7 @@ from functools import wraps
 import time
 
 
-def retry(exception_to_check, tries=3, logger=None, delay=0.5, backoff=2):
+def retry(exception_to_check, tries=3, logger=None, delay=1, backoff=2):
     """Retry calling the decorated function using an exponential backoff.
 
     :param exception_to_check: the exception to check. may be a tuple of
