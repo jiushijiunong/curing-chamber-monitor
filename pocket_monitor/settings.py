@@ -235,7 +235,7 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend', 'rest_framework.filters.OrderingFilter'
     ),
     'DEFAULT_PAGINATION_CLASS': 'pocket_monitor.db.pagination.CustomizedPageNumberPagination',
-    'PAGE_SIZE': 10
+    'PAGE_SIZE': 100
 }
 
 # admin email settings

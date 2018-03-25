@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import traceback
+
 from soap_request import SoapRequest
 from soap_response import SoapResponse
 import pocket_monitor.http as http
@@ -58,8 +60,8 @@ class ProjectRetriever(BaseRetriever):
                                                action="http://tempuri.org/IProject/",
                                                method="GetProjectsForBuildUnit")
 
-    def retrieve(self, build_unit_id=None, build_unit_user_id=None,
-                 not_finished_only=None, query_str='', page_num=1, page_size=20):
+    def retrieve(self, build_unit_id=None, build_unit_user_id=None, not_finished_only=None, query_str='', page_num=1,
+                 page_size=600):
         rep = super(ProjectRetriever, self).retrieve(buildUnitId=build_unit_id,
                                                      queryStr=query_str,
                                                      buildUnitUserId=build_unit_user_id,
@@ -94,7 +96,8 @@ class SampleRetriever(BaseRetriever):
                                               action="http://tempuri.org/ISample/",
                                               method="GetSamplesForAccountByPager")
 
-    def retrieve(self, project_id=None, contract_sign_number=None, query_str='', page_num=1, page_size=20):
+    def retrieve(self, project_id=None, contract_sign_number=None, query_str='', page_num=1,
+                 page_size=600):
         rep = super(SampleRetriever, self).retrieve(projectId=project_id,
                                                     contractSignNumber=contract_sign_number,
                                                     queryStr=query_str,
@@ -102,7 +105,8 @@ class SampleRetriever(BaseRetriever):
                                                     pageSize=page_size,
                                                     __order_list=["projectId", "contractSignNumber", "queryStr",
                                                                   "pageSize", "pageNum"])
-        return {"code": rep.rep_code, "result": rep.get_response_entities("GetSamplesForAccountByPagerResult", "pageCount", "recordCount")}
+        return {"code": rep.rep_code,
+                "result": rep.get_response_entities("GetSamplesForAccountByPagerResult", "pageCount", "recordCount")}
 
 
 # http://www.scetia.com/Scetia.OnlineExplorer/Authentication.svc
@@ -121,88 +125,166 @@ class AuthenticationRetriever(BaseRetriever):
         return {"code": rep.rep_code, "result": rep.get_response_entities("GetLoginInfoResult")}
 
 
- # project_id = "fbdc1ed6-9d0f-4dbe-b7b2-6421edc61bcc"
- #        build_unit_id = "394eb96f-e57b-4b0a-bb29-0f1fbddfaeb6"
- #
- #        contract_sign_number = "2016004481"
- #        query_str = ""
- #        page_size = 20
- #        page_num = 1
- #        build_unit_user_id = "0752221a-fa3e-4211-a3b9-e1c8886edd76"
- #        not_finished_only = True
+        # project_id = "fbdc1ed6-9d0f-4dbe-b7b2-6421edc61bcc"
+        #        build_unit_id = "394eb96f-e57b-4b0a-bb29-0f1fbddfaeb6"
+        #
+        #        contract_sign_number = "2016004481"
+        #        query_str = ""
+        #        page_size = 20
+        #        page_num = 1
+        #        build_unit_user_id = "0752221a-fa3e-4211-a3b9-e1c8886edd76"
+        #        not_finished_only = True
+
 
 class Sync(object):
     def __init__(self):
         self.project_retriever = ProjectRetriever()
         self.contract_retriever = ContractRetriever()
+        self.sample_retriever = SampleRetriever()
 
     def sync(self):
         user_id = "0752221a-fa3e-4211-a3b9-e1c8886edd76"
         build_unit_id = "394eb96f-e57b-4b0a-bb29-0f1fbddfaeb6"
         self._projects_sync(user_id, build_unit_id)
 
-    def _projects_sync(self, user_id=None, build_unit_id=None):
+    def _projects_sync(self, user_instance_id, build_unit_id):
         try:
-            rep = self.project_retriever.retrieve(build_unit_id=build_unit_id, page_size=20, page_num=1,
-                                                  build_unit_user_id=user_id, query_str="")
-            self._do_projects_sync(rep["result"]["content"])
+            rep = self.project_retriever.retrieve(build_unit_id=build_unit_id,
+                                                  page_num=1,
+                                                  build_unit_user_id=user_instance_id)
+            self._do_projects_sync(rep["result"]["content"], user_instance_id, build_unit_id)
             if "page_info" in rep["result"] and "page_count" in rep["result"]["page_info"]:
                 page_count = rep["result"]["page_info"]["page_count"]
                 left_pages = page_count - 1
                 current_page = 1
                 while left_pages > 1:
-                    rep = self.project_retriever.retrieve(build_unit_id=build_unit_id, page_size=current_page, page_num=20,
-                                                          build_unit_user_id=user_id, query_str="")
-                    self._do_projects_sync(rep["result"]["content"])
-                    left_pages -= left_pages
+                    rep = self.project_retriever.retrieve(build_unit_id=build_unit_id,
+                                                          page_num=current_page,
+                                                          build_unit_user_id=user_instance_id)
+                    self._do_projects_sync(rep["result"]["content"], user_instance_id, build_unit_id)
+                    left_pages -= 1
+                    current_page += 1
         except Exception as e:
-            logger.error('Sync projects error for user %s: %s' % (user_id, e.message))
+            exstr = traceback.format_exc()
+            logger.error('Sync projects error for user %s: %s' % (user_instance_id, exstr))
 
-    def _do_projects_sync(self, raw_data):
-            for project_item in raw_data:
-                try:
-                    project = models.Project.objects.get(instance_id=project_item["_Id"])
+    def _do_projects_sync(self, raw_data, user_instance_id, build_unit_id):
+        pre_project_status = 0
+        for project_item in raw_data:
+            try:
+                project = models.Project.objects.get(instance_id=project_item["_Id"])
+                pre_project_status = project.status
+                if project.status != int(project_item["_ProjectStatus"]):
+                    origin_status = project.status
+                    project.status = int(project_item["_ProjectStatus"])
+                    project.save()
+                    logger.info("Update project %s set status from %d to %d."
+                                % (project_item["_Id"], origin_status, project.status))
+            except models.Project.DoesNotExist:
+                project = models.Project.objects.create(instance_id=project_item["_Id"],
+                                                        name=project_item["_ProjectName"],
+                                                        nature=project_item["_ProjectNature"],
+                                                        num=project_item["_ProjectNo"],
+                                                        region=project_item["_ProjectRegion"],
+                                                        address=project_item["_ProjectAddress"],
+                                                        status=project_item["_ProjectStatus"],
+                                                        create_time=project_item["_CreateDateTime"],
+                                                        last_edit_time=project_item["_LastEditDateTime"],
+                                                        building_report_num=project_item["_BuildingReportNumber"],
+                                                        supervise_unit_id=project_item["_SuperviseUnitId"],
+                                                        build_unit_id=build_unit_id,
+                                                        user_instance_id=user_instance_id)
+                logger.info("Add project %s to db for user %s." % (project_item["_Id"], user_instance_id))
+            # only sync contracts for the in-progress project
+            if pre_project_status == 0:
+                self._contracts_sync(project)
 
-                    if project.status != int(project_item["_ProjectStatus"]):
-                        origin_status = project.status
-                        project.status = int(project_item["_ProjectStatus"])
-                        project.save()
-                        logger.info("Update project %s set status from %d to %d."
-                                    % (project_item["_Id"], origin_status, project.status))
-                except models.Project.DoesNotExist:
-                    models.Project.objects.create(instance_id=project_item["_Id"],
-                                                  name=project_item["_ProjectName"],
-                                                  nature=project_item["_ProjectNature"],
-                                                  num=project_item["_ProjectNo"],
-                                                  region=project_item["_ProjectRegion"],
-                                                  address=project_item["_ProjectAddress"],
-                                                  status=project_item["_ProjectStatus"],
-                                                  create_time=project_item["_CreateDateTime"],
-                                                  last_edit_time=project_item["_LastEditDateTime"],
-                                                  build_report_num=project_item["_BuildingReportNumber"])
-                    logger.info("Add project %s to db." % project_item["_Id"])
-            # self._contracts_sync(project_item["_Id"])
+    def _contracts_sync(self, project):
+        try:
+            rep = self.contract_retriever.retrieve(project_id=project.instance_id)
+            self._do_contracts_sync(project, rep["result"]["content"])
+        except Exception as e:
+            exstr = traceback.format_exc()
+            logger.error('Sync contracts error for project %s: %s' % (project.instance_id, exstr))
 
-    # def _contracts_sync(self, project_id=None):
-    #     try:
-    #         rep = self.contract_retriever.retrieve(project_id=project_id)
-    #         self._do_contracts_sync(rep["result"]["content"])
-    #     except Exception as e:
-    #         logger.error('Sync contracts error for project %s: %s' % (project_id, e.message))
-    #
-    # def _do_contracts_sync(self, raw_data):
-    #     for contract_item in raw_data:
-    #         try:
-    #             contract = models.Contract.objects.get(instance_id=contract_item["_Id"])
-    #         except models.Contract.DoesNotExist:
-    #             models.Contract.objects.create(instance_id=contract_item["_Id"],
-    #                                           name=project_item["_ProjectName"],
-    #                                           nature=project_item["_ProjectNature"],
-    #                                           num=project_item["_ProjectNo"],
-    #                                           region=project_item["_ProjectRegion"],
-    #                                           address=project_item["_ProjectAddress"],
-    #                                           status=project_item["_ProjectStatus"],
-    #                                           create_time=project_item["_CreateDateTime"],
-    #                                           last_edit_time=project_item["_LastEditDateTime"],
-    #                                           build_report_num=project_item["_BuildingReportNumber"])
-    #             logger.info("Add contract %s to db." % contract_item["_Id"])
+    def _do_contracts_sync(self, project, raw_data):
+        for contract_item in raw_data:
+            try:
+                contract = models.Contract.objects.get(sign_number=contract_item["_ContractSignNumber"])
+            except models.Contract.DoesNotExist:
+                contract = models.Contract.objects.create(sign_number=contract_item["_ContractSignNumber"],
+                                                          serial_num=contract_item["_ContractSerialNumber"],
+                                                          project=project,
+                                                          build_unit_id=contract_item["_BuildUnitID"],
+                                                          build_unit_name=contract_item["_BuildUnitName"],
+                                                          building_report_num=contract_item["_BuildingReportNumber"],
+                                                          checked_date_time=contract_item["_CheckedDateTime"],
+                                                          checked=bool(contract_item["_Checked"]),
+                                                          detection_unit_member_code=contract_item[
+                                                              "_DetectionUnitMemberCode"],
+                                                          detection_unit_member_name=contract_item[
+                                                              "_DetectionUnitName"],
+                                                          supervise_unit_id=contract_item["_SuperviseUnitID"],
+                                                          supervise_unit_name=contract_item["_SuperviseUnitName"],
+                                                          manage_unit_id=contract_item["_ManageUnitID"],
+                                                          manage_unit_name=contract_item["_ManageUnitName"],
+                                                          entrust_unit_name=contract_item["_EntrustUnitName"],
+                                                          construct_unit_name=contract_item["_ConstructUnitName"])
+                logger.info("Add contract %s for project %s to db." % (contract_item["_ContractSignNumber"],
+                                                                       project.instance_id))
+            self._samples_sync(project, contract)
+
+    def _samples_sync(self, project, contract):
+        try:
+            rep = self.sample_retriever.retrieve(project_id=project.instance_id,
+                                                 contract_sign_number=contract.sign_number,
+                                                 page_num=1)
+            self._do_samples_sync(contract, rep["result"]["content"])
+            if "page_info" in rep["result"] and "page_count" in rep["result"]["page_info"]:
+                page_count = rep["result"]["page_info"]["page_count"]
+                left_pages = page_count - 1
+                current_page = 1
+                while left_pages > 1:
+                    rep = self.sample_retriever.retrieve(project_id=project.instance_id,
+                                                         contract_sign_number=contract.sign_number,
+                                                         page_num=current_page)
+                    self._do_samples_sync(contract, rep["result"]["content"])
+                    left_pages -= 1
+                    current_page += 1
+        except Exception as e:
+            exstr = traceback.format_exc()
+            logger.error('Sync samples error for project %s contact %s: %s' % (project.instance_id,
+                                                                               contract.sign_number, exstr))
+
+    def _do_samples_sync(self, contract, raw_data):
+        for sample_item in raw_data:
+            try:
+                sample = models.Sample.objects.get(instance_id=sample_item["_Id"])
+            except models.Sample.DoesNotExist:
+                sample = models.Sample.objects.create(instance_id=sample_item["_Id"],
+                                                      name=sample_item["_SampleName"],
+                                                      num=sample_item["_SampleNo"],
+                                                      item_id=sample_item["_ItemID"],
+                                                      item_name=sample_item["_ItemName"],
+                                                      # project=project,
+                                                      contract=contract,
+                                                      count=sample_item["_SampleCount"],
+                                                      status=sample_item["_Sample_Status"],
+                                                      status_str=sample_item["_SampleStatusStr"],
+                                                      regular=bool(sample_item["_Sample_Regular"]),
+                                                      kind_id=sample_item["_KindID"],
+                                                      kind_name=sample_item["_KindName"],
+                                                      detection_unit_member_name=sample_item["_MemberCode"],
+                                                      report_num=sample_item["_ReportNumber"],
+                                                      core_code_id=sample_item["_CoreCodeId"],
+                                                      core_code_id_end=sample_item["_CoreCodeIdEnd"],
+                                                      project_part=sample_item["_ProJect_Part"],
+                                                      spec=sample_item["_SpecName"],
+                                                      grade=sample_item["_GradeName"],
+                                                      exam_result=sample_item["_Exam_Result"],
+                                                      hnt_yhtj=sample_item["_Hnt_YHTJ"],
+                                                      age_time_str=sample_item["_AgeTimeStr"],
+                                                      report_date_str=sample_item["_ReportDateStr"],
+                                                      detection_date_str=sample_item["_DetectionDateStr"],
+                                                      molding_date_str=sample_item["_MoldingDateStr"]
+                                                      )
