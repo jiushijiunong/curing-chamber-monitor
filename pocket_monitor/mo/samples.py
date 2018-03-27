@@ -160,17 +160,38 @@ class Sync(object):
         logger.info("Check samples count for build unit %s of user %s" % (build_unit_id, user_instance_id))
         retrieved_samples_count = 0
         samples_count = 0
+        retrieved_projects_count = 0
+        projects_count = 0
+        retrieved_contracts_count = 0
+        contracts_count = 0
         projects = models.Project.objects.\
-            filter(user_instance_id=user_instance_id, build_unit_id=build_unit_id).values("id", "instance_id")
+            filter(user_instance_id=user_instance_id, build_unit_id=build_unit_id).values("id")
+        projects_count = len(projects)
         for project in projects:
-            contracts = models.Contract.objects.filter(project_id=project["id"]).values("id", "sign_number")
+            contracts = models.Contract.objects.filter(project_id=project["id"]).values("id")
+            contracts_count += len(contracts)
             for contract in contracts:
-                rep = self.sample_retriever.retrieve(project_id=project["instance_id"],
-                                                     contract_sign_number=contract["sign_number"],
+                samples_count += models.Sample.objects.filter(contract_id=contract["id"]).values("id").count()
+        rep = self.project_retriever.retrieve(build_unit_id=build_unit_id,
+                                              page_num=1,
+                                              page_size=2000,
+                                              build_unit_user_id=user_instance_id)
+        projects = rep["result"]["content"]
+        retrieved_projects_count = len(projects)
+        logger.info("Retrieved projects count %d and %d in DB for build unit %s of user %s"
+                    % (retrieved_projects_count, projects_count, build_unit_id, user_instance_id))
+        for project in projects:
+            rep = self.contract_retriever.retrieve(project_id=project["_Id"])
+            contracts = rep["result"]["content"]
+            retrieved_contracts_count += len(contracts)
+            for contract in contracts:
+                rep = self.sample_retriever.retrieve(project_id=project["_Id"],
+                                                     contract_sign_number=contract["_ContractSignNumber"],
                                                      page_num=1,
                                                      page_size=20)
                 retrieved_samples_count += rep["result"]["page_info"]["record_count"]
-                samples_count += models.Sample.objects.filter(contract_id=contract["id"]).values("id").count()
+        logger.info("Retrieved contracts count %d and %d in DB for build unit %s of user %s"
+                    % (retrieved_contracts_count, contracts_count, build_unit_id, user_instance_id))
         logger.info("Retrieved samples count %d and %d in DB for build unit %s of user %s"
                     % (retrieved_samples_count, samples_count, build_unit_id, user_instance_id))
 
