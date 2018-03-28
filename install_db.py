@@ -10,5 +10,5 @@ work_dir = os.path.dirname(os.path.realpath(__file__))
 #     shutil.rmtree(migration_dir)
 os.chdir(work_dir)
 os.system('python manage.py makemigrations & '
-		  'python manage.py makemigrations db & '
+		  'python manage.py makemigrations ccmapp & '
           'python manage.py migrate')
