@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 
 from rest_framework import serializers
-from pocket_monitor.db import models
+from ccm.ccmapp import models
 
 
 class ProjectSerializer(serializers.ModelSerializer):

@@ -1,6 +1,14 @@
-# pocket_monitor
+# curing chamber monitor
+
+## Build & Test Status
+* [![Build Status](https://travis-ci.org/littlepiggroup/curing-chamber-monitor.svg?branch=integration)](https://travis-ci.org/littlepiggroup/curing-chamber-monitor)
+
 ## 项目结构
-* pocket_monitor目录是Django的project, pocket_monitor/db是Django的app. 一个project可以包含多个app. 
+* curing chamber monitor目录是Django的project, ccm/ccmdb是Django的app. 一个project可以包含多个app.
+* http://www.django-rest-framework.org/tutorial/quickstart/ it explains why place db folder under pocket-monitor.
+`It may look unusual that the application has been created within the project directory. Using the project's namespace avoids name clashes with external module (topic goes outside the scope of the quickstart).`
+* In best practice, we don't place app folder under site-level folder: https://docs.djangoproject.com/en/1.11/intro/tutorial01/#creating-a-project,
+https://www.revsys.com/blog/2014/nov/21/recommended-django-project-layout/
 
 ## Code flow:
 ### urls -> db.urls -> db.views -> db.serializers -> db.models

@@ -3,7 +3,7 @@ import shutil
 
 work_dir = os.path.dirname(os.path.realpath(__file__))
 # db_file = os.path.join(work_dir, 'db.sqlite3')
-# migration_dir = os.path.join(work_dir, 'pocket_monitor/db/migrations')
+# migration_dir = os.path.join(work_dir, 'ccm/ccmapp/migrations')
 # if os.path.exists(db_file):
 # 	os.remove(db_file)
 # if os.path.exists(migration_dir):
